@@ -1,0 +1,4 @@
+#!/bin/sh
+# Git runs hooks through sh on every OS, including Git for Windows.
+# Resolve the scanner relative to this file so it works from any checkout.
+exec node "$(dirname "$0")/../scripts/scan-secrets.mjs" --staged
