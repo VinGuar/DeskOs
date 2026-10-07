@@ -1,0 +1,8 @@
+{
+  "steps": [
+    { "emit": { "type": "system", "subtype": "init", "session_id": "fixture-session", "model": "fake-model", "tools": [] } },
+    { "emit": { "type": "assistant", "session_id": "fixture-session", "message": { "role": "assistant", "content": [{ "type": "text", "text": "Loaded from a fixture." }] } } },
+    { "emit": { "type": "result", "subtype": "success", "is_error": false, "result": "Loaded from a fixture.", "session_id": "fixture-session", "num_turns": 1, "duration_ms": 1, "total_cost_usd": 0, "usage": { "input_tokens": 1, "output_tokens": 1 } } }
+  ],
+  "exitCode": 0
+}
