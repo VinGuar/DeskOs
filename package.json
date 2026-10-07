@@ -1,0 +1,29 @@
+{
+  "name": "deskos",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "prepare": "node scripts/install-hooks.mjs",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "typecheck": "pnpm -r --parallel typecheck && tsc -p tsconfig.scripts.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "check:boundary": "node scripts/boundary.mjs",
+    "check:em-dash": "node scripts/no-em-dash.mjs",
+    "check:secrets": "node scripts/scan-secrets.mjs --all",
+    "check": "pnpm lint && pnpm typecheck && pnpm check:boundary && pnpm check:em-dash && pnpm check:secrets && pnpm test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.15",
+    "@types/node": "^22.20.5",
+    "@vitest/coverage-v8": "^5.0.3",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  }
+}
