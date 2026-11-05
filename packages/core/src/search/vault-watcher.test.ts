@@ -45,8 +45,15 @@ function manualWatch() {
 }
 
 describe("VaultWatcher (driven by hand)", () => {
-  function setup(opts: { fullScanIntervalMs?: number | null } = {}) {
+  function setup(
+    opts: {
+      fullScanIntervalMs?: number | null;
+      rescanOnStart?: boolean;
+      before?: (root: string) => void;
+    } = {},
+  ) {
     const root = tempDir();
+    opts.before?.(root);
     const vault = new Vault({ root });
     const index = new NoteIndex();
     const clock = new FakeClock();
@@ -58,6 +65,7 @@ describe("VaultWatcher (driven by hand)", () => {
       watch,
       debounceMs: 50,
       fullScanIntervalMs: opts.fullScanIntervalMs ?? null,
+      rescanOnStart: opts.rescanOnStart ?? false,
       onChange: (c) => changes.push(c),
       onError: (e) => errors.push(e),
     });
@@ -151,6 +159,16 @@ describe("VaultWatcher (driven by hand)", () => {
     expect(index.get("missed.md")).toBeDefined();
   });
 
+  it("rescans on start to catch changes made before the OS watcher went live", async () => {
+    const { index, state, watcher } = setup({
+      rescanOnStart: true,
+      before: (root) => write(root, "early.md", "x"),
+    });
+    await watcher.idle();
+    expect(index.get("early.md")).toBeDefined();
+    expect(state.closed).toBe(false);
+  });
+
   it("stop closes the OS watcher and cancels timers", async () => {
     const { state, clock, watcher } = setup({ fullScanIntervalMs: 1000 });
     state.emit("a.md");
@@ -197,6 +215,22 @@ describe("VaultWatcher (real file system events)", () => {
     });
     watcher.start();
     cleanups.push(() => watcher.stop());
+    await watcher.idle();
+
+    // macOS FSEvents goes live a moment after fs.watch returns and drops events
+    // before that. Write fresh probe files until one arrives through an event.
+    let live = false;
+    for (let n = 0; n < 40 && !live; n++) {
+      write(root, `probe-${n}.md`, "probe");
+      const deadline = Date.now() + 500;
+      while (!live && Date.now() < deadline) {
+        live = index.get(`probe-${n}.md`) !== undefined;
+        await new Promise((r) => setTimeout(r, 25));
+      }
+    }
+    expect(live).toBe(true);
+    for (const n of index.list().map((note) => note.path)) rmSync(path.join(root, n));
+    await waitFor(() => index.size === 0, "probe cleanup");
 
     write(root, "a.md", "first");
     await waitFor(() => index.search("first").length === 1, "add");

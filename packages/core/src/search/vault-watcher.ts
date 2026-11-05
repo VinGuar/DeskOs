@@ -25,6 +25,12 @@ export interface VaultWatcherOptions {
   debounceMs?: number;
   /** Full reconcile on this interval, as a backstop for events the OS drops. Null turns it off. */
   fullScanIntervalMs?: number | null;
+  /**
+   * Reconcile once right after start. Catches changes made between loading the
+   * index and the OS watcher going live (macOS FSEvents drops events in that gap).
+   * Default true.
+   */
+  rescanOnStart?: boolean;
   onChange?: (changes: IndexChanges) => void;
   onError?: (err: unknown) => void;
   watch?: WatchFn;
@@ -41,6 +47,7 @@ export class VaultWatcher {
   readonly #clock: Clock;
   readonly #debounceMs: number;
   readonly #fullScanMs: number | null;
+  readonly #rescanOnStart: boolean;
   readonly #onChange: (c: IndexChanges) => void;
   readonly #onError: (err: unknown) => void;
   readonly #watchFn: WatchFn;
@@ -59,6 +66,7 @@ export class VaultWatcher {
     this.#clock = opts.clock ?? systemClock;
     this.#debounceMs = opts.debounceMs ?? 100;
     this.#fullScanMs = opts.fullScanIntervalMs === undefined ? 5 * 60_000 : opts.fullScanIntervalMs;
+    this.#rescanOnStart = opts.rescanOnStart ?? true;
     this.#onChange = opts.onChange ?? (() => {});
     this.#onError = opts.onError ?? (() => {});
     this.#watchFn = opts.watch ?? nodeWatch;
@@ -78,6 +86,7 @@ export class VaultWatcher {
     if (this.#fullScanMs !== null) {
       this.#interval = this.#clock.setInterval(() => this.notify(null), this.#fullScanMs);
     }
+    if (this.#rescanOnStart) this.notify(null);
   }
 
   /** Record a changed path (root-relative, either separator). Null means "something changed, rescan". */

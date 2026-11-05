@@ -96,6 +96,7 @@
 ## 2026-11-05: File watcher is node:fs.watch recursive, no chokidar (M1-T01)
 - Decision: `fs.watch(root, { recursive: true })` (native on Windows and macOS, Node's inotify implementation on Linux, Node 22 floor). Events are debounced through `Clock` (100 ms). A changed `.md` path is re-read alone. Any other path (folder renamed or deleted, or unknown) reconciles that subtree. A null file name or a watcher error triggers a full reconcile. Dot paths are ignored, which also ignores our own `.deskos/` writes. A full reconcile every 5 minutes covers dropped events and Unicode normalization differences in macOS event paths.
 - Alternatives: chokidar. Rejected: a dependency for what Node now does natively, and the periodic reconcile already covers the cases chokidar papers over.
+- 2026-11-05 addendum: macOS FSEvents goes live shortly after `fs.watch` returns and drops events made before that (CI run 42086864296 failed this way). `start()` now reconciles once by default (`rescanOnStart`), which also covers changes between `loadIndex` and `start`. The real-fs test waits for a probe file to arrive through an event before asserting.
 - Consequences: on Windows a folder cannot be renamed while any file inside is open, so a rename racing an index read can fail once with EPERM. Reads are milliseconds long. The integration test retries the rename for this reason.
 
 ## 2026-11-05: Env files for developer keys only
@@ -109,7 +110,12 @@
 - `NoteRepository` registers its schema on the vault's registry (or refuses a conflicting one), updates the index on every write, and on `get` re-reads from disk; a stale index entry is healed and reported as not found.
 - Default folders for new notes: Work, Threads, Artifacts, People, Events, Context. Users can move notes anywhere.
 
+## 2026-11-05: docs/HANDOFF.md
+- Context: owner asked for a handoff doc edited after every completed step, so an AI can resume easily.
+- Decision: `docs/HANDOFF.md` holds only the current state: active task, what it waits on, exact next step, code map, verify commands, gotchas. Rewritten after every finished step. PROGRESS.md keeps status, history, and tech debt (updated per session). CLAUDE.md rules 1 and 3 list it first.
+
 ## Spec deviations
+- 2026-11-05: added `docs/HANDOFF.md` beyond the SPEC 11.1 file list (see above).
 - 2026-10-07: Node floor 22, not 20 (see above).
 - 2026-10-07: Boundary check stricter than "word-boundary grep" (see above).
 - 2026-10-07: SPEC has two sections numbered 4.7 (Operational storage, Config). Docs refer to Config as "4.7 Config" to avoid ambiguity. No behavior change.
