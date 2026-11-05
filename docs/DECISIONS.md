@@ -56,6 +56,28 @@
 - Context: the fake binary (M0-T04) emits events shaped like `claude -p --output-format stream-json`. These shapes were written from memory, not verified.
 - Decision: keep them as presets in `packages/testkit/src/fake-claude/scenario.ts`, marked UNVERIFIED. M2-T02 must check the current CLI docs, fix the presets, and record the verified flags and shapes under "Verified external facts".
 
+## 2026-11-05: Vault file format and path rules (M1-T01)
+- Context: SPEC 4.6 fixes markdown + YAML frontmatter and `<type>-<slug>-<short-id>.md`, but not parsing, ids, or path rules.
+- Decision:
+  - YAML via `yaml` (YAML 1.2 core schema, `uniqueKeys`). Dates and `yes`/`no` stay strings, so hand-written notes do not silently change type. Frontmatter must be a mapping. Writes are always LF; CRLF and BOM are accepted on read.
+  - Entity `id` is a UUID in frontmatter. The 4-hex short id exists only to keep file names unique and is regenerated on a name clash. Renaming a file never changes the entity id.
+  - Slugs keep letters and digits from any script (NFKD, accents stripped, max 60 code points), everything else becomes one dash. Empty slug is `untitled`.
+  - Base frontmatter: `id`, `type`, `schema_version` (default 1), `created_at`, `updated_at`, optional `source`, `source_ref`, `links`, `raw`. Schemas are `z.looseObject` so unknown fields survive. Timestamps accept ISO datetime with offset or a bare date. A `NoteSchemaRegistry` maps type to schema; unregistered types use the base schema. Per-type schemas come in M1-T02.
+  - Read results are `entity`, `plain` (no frontmatter or no `type`: a user note DeskOS did not create), or `invalid` (reported, never thrown).
+  - Note paths are vault-relative and `/` separated. Backslash is a separator on every OS. Rejected: absolute, drive-relative, UNC, `.`/`..`/empty segments, any dot segment (so `.deskos`, `.obsidian`, temp files are off limits), NUL, non-`.md`. Every read/write/remove also realpaths the target and refuses anything outside the real root, plus any note that is itself a symlink. Scans skip dot entries and never follow symlinks.
+  - `update` is a shallow patch; `id`, `type`, `created_at` cannot change.
+- Alternatives: `js-yaml` (YAML 1.1 by default, would coerce `no` to false and dates to Date). `gray-matter` (wraps js-yaml, unmaintained). Preserving YAML comments via the `yaml` Document API: deferred, see PROGRESS tech debt.
+- Consequences: a DeskOS rewrite of a hand-edited note drops YAML comments and converts CRLF to LF.
+
+## 2026-11-05: Operational storage (M1-T01)
+- Decision: `writeFileAtomic` writes `.<name>.<random>.tmp` in the target folder (with `flush`), then renames. Rename retries EPERM/EBUSY/EACCES with backoff 10..320 ms (Windows returns these while antivirus, OneDrive, or an editor holds the file). Temp files are removed on failure. `JsonStore` is one atomic JSON file per id (`^[A-Za-z0-9_-]{1,128}$`). `JsonlLog` appends with `flush`, serializes appends per instance, rotates by size to `<name>.<utc stamp>-<nnnn>.jsonl` (no colons, sorts in time order), and on first append adds a newline if a crash left a torn last line. Readers skip and report unparseable lines.
+- Consequences: date-based rotation (SPEC 4.7) not done yet. One writer process per log is assumed (the daemon); cross-process locking is not provided.
+
+## 2026-11-05: core tests depend on testkit
+- Context: testkit implements core's `Clock`; core tests need `FakeClock` and `makeTempDir` (CLAUDE.md requires FakeClock in tests).
+- Decision: `@deskos/testkit` is a devDependency of `@deskos/core`. pnpm warns about a workspace cycle. Harmless: packages are source-only, so there is no build order.
+- Alternatives: move FakeClock into core (test code in production package), or duplicate helpers. Rejected.
+
 ## Spec deviations
 - 2026-10-07: Node floor 22, not 20 (see above).
 - 2026-10-07: Boundary check stricter than "word-boundary grep" (see above).
@@ -67,10 +89,13 @@
 - `@vitest/coverage-v8` (dev): coverage floors in SPEC 10.2. Alternative: istanbul provider, slower.
 - `@biomejs/biome` (dev): lint + format in one tool. Alternative: ESLint + Prettier.
 - `@types/node` (dev, pinned ^22): Node API types matching the engine floor.
-- `zod` (testkit, later core): SPEC-mandated validation at every boundary. Used in testkit for scenario and fixture schemas.
+- `zod` (testkit, core): SPEC-mandated validation at every boundary. Used in testkit for scenario and fixture schemas, in core for frontmatter and operational records.
+- `yaml` (core, ^2.9.1): frontmatter parse/serialize. Pure JS, zero dependencies, YAML 1.2. Alternatives: js-yaml, gray-matter (see 2026-11-05 vault entry).
 
 ## Verified external facts (what, source, date verified)
 - Resolved versions on 2026-10-07 (npm registry via pnpm install): typescript 7.0.2, vitest 5.0.3, @biomejs/biome 2.5.15, zod 4.6.5, pnpm 9.15.9. Source: install output.
 - `pnpm audit` works against the registry with pnpm 9.15.9. Source: local run, 2026-10-07.
 - Biome 2.5 deprecates `linter.rules.recommended` in favor of `preset`. Source: `biome check` output, migrated with `biome migrate`, 2026-10-07.
+- `yaml` 2.9.1 is current on npm with no dependencies. Source: `pnpm view yaml`, 2026-11-05.
+- zod <4.6.6 has GHSA-mrhx-c7xc-m3w5 (high, memory exhaustion on oversized constrained collections). Upgraded core and testkit to zod ^4.6.7. `pnpm audit --audit-level high` clean after. Source: local audit, 2026-11-05.
 - Node 20 end of life April 2026. Source: Node.js release schedule (from memory, not re-fetched this session).
