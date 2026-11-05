@@ -14,7 +14,7 @@ A task is `[x]` only when its tests are green in CI on all three OSes (SPEC 10.9
 Exit: CI green on 3 OSes. A fresh AI session can resume using only the repo docs. Met.
 
 ## M1: Core engine and generalization foundations
-- [~] M1-T01 (local: all parts code complete, waiting on CI) Vault engine: frontmatter schemas per entity type (zod), atomic file read/write, file watcher, in-memory index builder plus snapshot persistence, rebuild-from-scratch tests, operational JSON/JSONL storage with atomic writes.
+- [x] M1-T01 (CI run 42084790274) Vault engine: frontmatter schemas per entity type (zod), atomic file read/write, file watcher, in-memory index builder plus snapshot persistence, rebuild-from-scratch tests, operational JSON/JSONL storage with atomic writes.
 - [ ] M1-T02 Core entity schemas (zod) and repositories for all entities in 3.2.
 - [ ] M1-T03 Event bus and job scheduler (persistent, restart-safe).
 - [ ] M1-T04 ApprovalGate, PendingAction, Approval, and append-only audit log.

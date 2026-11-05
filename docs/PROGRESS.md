@@ -1,10 +1,9 @@
 # Progress (last updated: 2026-11-05 by Claude Code session 2)
 
 ## Status
-- Current milestone: M1 Core engine. M0 is complete.
-- Overall: M0 exit met: CI green on ubuntu, macOS, Windows plus gitleaks and audit (run 42082959833 on 8df2f94). M1-T01 part 1 (vault file layer + operational stores) is green in CI too.
+- Current milestone: M1 Core engine. M0 complete. M1-T01 complete (CI run 42084790274). Working on M1-T02.
 - CI: `.github/workflows/ci.yml` on `https://github.com/VinGuar/DeskOs` (public). Runs on push to main and on PRs.
-- Test summary: vitest 196/196 on all three OSes. Lint, typecheck, boundary, em dash, secret scan, gitleaks, audit clean. Coverage not measured yet (floors start in M1).
+- Test summary: vitest 241/241 on all three OSes. Lint, typecheck, boundary, em dash, secret scan, gitleaks, audit clean. Coverage not measured yet (floors start in M1).
 
 ## What works (verified)
 - pnpm monorepo with `packages/core`, `packages/ui-core`, `packages/testkit`: `pnpm install`, `pnpm typecheck` (TS 7 strict, `noUncheckedIndexedAccess`), `pnpm lint` (Biome).
@@ -16,9 +15,17 @@
 - Frontmatter parse/serialize (CRLF, BOM, YAML 1.2 core, unknown fields round trip): `packages/core/src/vault/frontmatter.test.ts`.
 - File naming and slugs (unicode, illegal chars): `packages/core/src/vault/naming.test.ts`.
 - `Vault` create/read/write/update/remove/walk, path guard (traversal, absolute, UNC, dot folders, symlink/junction escape): `packages/core/src/vault/vault.test.ts`.
+- `NoteIndex` (MiniSearch): metadata by path and id, search, duplicate ids, snapshot round trip: `packages/core/src/search/note-index.test.ts`.
+- Reconcile, `loadIndex` from snapshot, rebuild-from-scratch equality, corrupt snapshot fallback: `packages/core/src/search/index-sync.test.ts`.
+- `VaultWatcher` debounce, subtree reconcile, periodic full scan, plus real fs.watch add/edit/rename/delete on all OSes: `packages/core/src/search/vault-watcher.test.ts`.
+- `JsonlLog` daily rotation: `packages/core/src/storage/jsonl-log.test.ts`.
+- `.env` files git-ignored, `.env.example` names only: `scripts/env-files.test.ts`.
 
 ## In progress
-- M1-T01 part 2, not started: in-memory index, snapshot, watcher, rebuild-from-scratch tests, date-based log rotation.
+- M1-T02 core entity schemas and repositories. Plan:
+  - Note entities in `packages/core/src/entities/`: `work-item`, `thread`, `artifact`, `person`, `event`, `context-snapshot`, each a `defineNoteSchema(...)` registered by `registerCoreNoteTypes(registry)`. Optional `derived` block in the base shape (model, prompt_version, source_ids, generated_at) per SPEC 4.6.
+  - Job (with its Sandbox as a sub-object, SPEC 4.7) is operational: JSON under `.deskos/jobs/`. Base operational fields: id, workspace_id, created_at, updated_at, source. Job states from F1 plus `interrupted`. Transitions are M2-T03, not here.
+  - `NoteRepository` over Vault + NoteIndex (create, get by id, update, remove, list), updating the index on each write so reads are consistent without the watcher. `JobRepository` over JsonStore.
 
 ## Blockers
 - None.
@@ -33,11 +40,13 @@
 - DeskOS rewrites of hand-edited notes drop YAML comments and convert CRLF to LF: low. Fix later with the `yaml` Document API if users complain.
 - `Vault.create` checks the name is free, then writes. Not race-safe across processes. Fine while the daemon is the only writer.
 - `JsonlLog` assumes one writer process per log.
+- Search performance at 100k notes (SPEC 10.8, p95 under 100 ms) is not measured yet: belongs to the scale suite (SPEC 10.3 item 9).
+- Windows: renaming a folder while the watcher is reading a file inside fails once with EPERM. Inherent to Windows; reads are short.
 
 ## Next actions (do these in order)
-1. M1-T01 part 2, the index, in `packages/core/src/vault/` (or `src/index/`): pick MiniSearch or FlexSearch (log why), build from `Vault.walk()` + `Vault.read()`, keyed by entity id, plain notes indexed by path. Persist snapshot to `.deskos/index.snapshot` via `writeFileAtomic`, versioned so a format change forces rebuild. Rebuild-from-scratch test: delete snapshot, rebuild, same results. Invalid notes are tracked, not indexed.
-2. Watcher: decide `node:fs.watch` recursive vs chokidar (recursive on Linux needs Node 20+, verify on CI). Debounce through `Clock`. Ignore dot paths and `.tmp`. Test with real files: add, change, rename, delete, folder delete.
-3. Date-based rotation for `JsonlLog` (SPEC 4.7 says size/date). Then M1-T01 is done once CI is green.
+1. Finish M1-T02 per the plan above, push, confirm CI.
+2. M1-T03 event bus and persistent, restart-safe job scheduler (uses `Clock`, `JsonStore`).
+3. M1-T04 ApprovalGate, PendingAction, Approval, audit log on `JsonlLog` with `rotateDaily: true`.
 
 ## Open questions for the owner
 - Repo is public; Section 12 default was private. Keep public? (default: keep, owner created it)
@@ -47,9 +56,10 @@
 ## Session log (newest first)
 ### 2026-11-05 session 2
 - Did: first push to GitHub (merged its initial LICENSE/README commit). First CI run failed on gitleaks (fake key false positive) and macOS (`/private/var` temp path); fixed, second run green on all jobs. M0 marked complete. M1-T01 part 1. `packages/core/src/storage/` (atomic write, JsonStore, JsonlLog) and `packages/core/src/vault/` (frontmatter, naming, schema registry, Vault). Added `zod` and `yaml` to core, testkit as core devDependency.
-- Verified by: `pnpm check` on Windows; CI run 42082959833 green on ubuntu, macOS, Windows, gitleaks, audit.
-- Left off at: index/snapshot/watcher not started.
-- Decisions: vault file format and path rules, operational storage, core-testkit cycle. See DECISIONS.md 2026-11-05 entries.
+- Then M1-T01 part 2: NoteIndex (MiniSearch), snapshot, reconcile, VaultWatcher (fs.watch recursive), JsonlLog daily rotation. `.env.example` and env ignore test.
+- Verified by: CI runs 42082959833 (M0) and 42084790274 (M1-T01), green on ubuntu, macOS, Windows, gitleaks, audit.
+- Left off at: starting M1-T02.
+- Decisions: vault file format and path rules, operational storage, core-testkit cycle, first push and CI fixes, MiniSearch, fs.watch, env files. See DECISIONS.md 2026-11-05 entries.
 
 ### 2026-10-07 session 1
 - Did: M0-T01 through M0-T06. Monorepo scaffold, docs, CI workflow, testkit, boundary check, em dash check, secret scanner + pre-commit hook + gitleaks job, fixture hygiene test.
