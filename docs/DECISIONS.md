@@ -78,6 +78,12 @@
 - Decision: `@deskos/testkit` is a devDependency of `@deskos/core`. pnpm warns about a workspace cycle. Harmless: packages are source-only, so there is no build order.
 - Alternatives: move FakeClock into core (test code in production package), or duplicate helpers. Rejected.
 
+## 2026-11-05: First push and CI fixes (M0)
+- Remote: `https://github.com/VinGuar/DeskOs.git`, created by the owner. Its GitHub-generated initial commit (LICENSE Apache 2.0, README, Python `.gitignore` template) was merged with `--allow-unrelated-histories`, not force-pushed over. The project `.gitignore` won.
+- The repo is public. Section 12 default was private; the owner created it, so it stays as is. Listed as an open question in PROGRESS.
+- gitleaks `generic-api-key` flagged a fake key in `scripts/scan-secrets.test.ts` (commit 0702298): a single high-entropy fragment next to the word `api`. Fix: build fake keys from short fragments. The historical finding is listed in `.gitleaksignore` by fingerprint. Any new entry there needs a comment saying why.
+- macOS: `os.tmpdir()` is under `/var`, a symlink to `/private/var`, and child processes report the resolved cwd. `makeTempDir` now returns `realpathSync.native(...)`. Tests should compare resolved paths.
+
 ## Spec deviations
 - 2026-10-07: Node floor 22, not 20 (see above).
 - 2026-10-07: Boundary check stricter than "word-boundary grep" (see above).

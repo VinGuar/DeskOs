@@ -2,19 +2,19 @@
 Legend: [ ] todo, [~] in progress, [x] done (tests green), [!] blocked
 
 A task is `[x]` only when its tests are green in CI on all three OSes (SPEC 10.9).
-`[~] local` means code complete and green locally, waiting for the first CI run.
+`[~] local` means code complete and green locally, not yet green in CI.
 
-## M0: Scaffold and handoff system
-- [~] M0-T01 Init pnpm monorepo, TS strict, lint, format, editorconfig, `.gitignore`. (local: Windows green)
-- [~] M0-T02 Create `CLAUDE.md`, `docs/PROGRESS.md`, `docs/TASKS.md`, `docs/DECISIONS.md`, `docs/TESTING.md`, `docs/RUNBOOK.md`. (local)
-- [!] M0-T03 GitHub Actions matrix (ubuntu, macos, windows): install, lint, typecheck, unit tests. (workflow written; blocked on a GitHub remote to run it)
-- [~] M0-T04 `testkit` skeleton: fake `claude` binary (scriptable), fixture loader, fake clock. (local: Windows green)
-- [~] M0-T05 Boundary test: banned-terms check for `packages/core` and `packages/ui-core`. (local: Windows green)
-- [~] M0-T06 Secret scanning in CI (gitleaks) and a pre-commit hook. (local scanner + hook green; gitleaks job unrun)
-Exit: CI green on 3 OSes. A fresh AI session can resume using only the repo docs.
+## M0: Scaffold and handoff system (complete 2026-11-05, CI run 42082959833)
+- [x] M0-T01 Init pnpm monorepo, TS strict, lint, format, editorconfig, `.gitignore`.
+- [x] M0-T02 Create `CLAUDE.md`, `docs/PROGRESS.md`, `docs/TASKS.md`, `docs/DECISIONS.md`, `docs/TESTING.md`, `docs/RUNBOOK.md`.
+- [x] M0-T03 GitHub Actions matrix (ubuntu, macos, windows): install, lint, typecheck, unit tests.
+- [x] M0-T04 `testkit` skeleton: fake `claude` binary (scriptable), fixture loader, fake clock.
+- [x] M0-T05 Boundary test: banned-terms check for `packages/core` and `packages/ui-core`.
+- [x] M0-T06 Secret scanning in CI (gitleaks) and a pre-commit hook.
+Exit: CI green on 3 OSes. A fresh AI session can resume using only the repo docs. Met.
 
 ## M1: Core engine and generalization foundations
-- [~] M1-T01 (part 1 local: atomic write, frontmatter, naming, base schema + registry, Vault read/write/create/update/walk, JsonStore, JsonlLog. Remaining: index, snapshot, watcher, rebuild tests, date rotation) Vault engine: frontmatter schemas per entity type (zod), atomic file read/write, file watcher, in-memory index builder plus snapshot persistence, rebuild-from-scratch tests, operational JSON/JSONL storage with atomic writes.
+- [~] M1-T01 (part 1 green in CI on 3 OSes: atomic write, frontmatter, naming, base schema + registry, Vault read/write/create/update/walk, JsonStore, JsonlLog. Remaining: index, snapshot, watcher, rebuild tests, date rotation) Vault engine: frontmatter schemas per entity type (zod), atomic file read/write, file watcher, in-memory index builder plus snapshot persistence, rebuild-from-scratch tests, operational JSON/JSONL storage with atomic writes.
 - [ ] M1-T02 Core entity schemas (zod) and repositories for all entities in 3.2.
 - [ ] M1-T03 Event bus and job scheduler (persistent, restart-safe).
 - [ ] M1-T04 ApprovalGate, PendingAction, Approval, and append-only audit log.
