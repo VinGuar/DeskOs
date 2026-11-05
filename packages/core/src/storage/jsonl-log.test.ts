@@ -1,4 +1,4 @@
-import { appendFileSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, readdirSync, readFileSync, utimesSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { FakeClock, makeTempDir } from "@deskos/testkit";
 import { afterEach, describe, expect, it } from "vitest";
@@ -74,6 +74,44 @@ describe("JsonlLog", () => {
     ]);
     expect(names.join("")).not.toContain(":");
     expect((await log.read()).records.map((r) => r.n)).toEqual([0, 1, 2, 3, 4, 5]);
+  });
+
+  it("rotates daily on a UTC day change when asked", async () => {
+    const d = dir();
+    const clock = new FakeClock(Date.UTC(2026, 0, 1, 23, 0));
+    const log = new JsonlLog(path.join(d, "audit.jsonl"), entrySchema, {
+      clock,
+      rotateDaily: true,
+    });
+    await log.append({ n: 1 });
+    clock.advance(30 * 60_000); // 23:30, same day
+    await log.append({ n: 2 });
+    clock.advance(60 * 60_000); // 00:30 next day
+    await log.append({ n: 3 });
+    expect(readdirSync(d).sort()).toEqual(["audit.20260102T003000000Z-0000.jsonl", "audit.jsonl"]);
+    expect(readFileSync(path.join(d, "audit.jsonl"), "utf8")).toBe('{"n":3}\n');
+    expect((await log.read()).records.map((r) => r.n)).toEqual([1, 2, 3]);
+  });
+
+  it("daily rotation picks up a file left by an earlier run from its mtime", async () => {
+    const d = dir();
+    const file = path.join(d, "audit.jsonl");
+    writeFileSync(file, '{"n":1}\n');
+    const old = new Date(Date.UTC(2025, 11, 31, 12));
+    utimesSync(file, old, old);
+    const clock = new FakeClock(Date.UTC(2026, 0, 1, 9));
+    await new JsonlLog(file, entrySchema, { clock, rotateDaily: true }).append({ n: 2 });
+    expect(readdirSync(d).sort()).toEqual(["audit.20260101T090000000Z-0000.jsonl", "audit.jsonl"]);
+  });
+
+  it("does not rotate daily unless asked", async () => {
+    const d = dir();
+    const clock = new FakeClock();
+    const log = new JsonlLog(path.join(d, "audit.jsonl"), entrySchema, { clock });
+    await log.append({ n: 1 });
+    clock.advance(3 * 24 * 60 * 60_000);
+    await log.append({ n: 2 });
+    expect(readdirSync(d)).toEqual(["audit.jsonl"]);
   });
 
   it("reads nothing when the log does not exist yet", async () => {

@@ -186,12 +186,28 @@ export class Vault {
   }
 
   /**
-   * Every `.md` file in the vault, as vault-relative `/` paths, in a stable order.
-   * Skips dot files and folders (`.deskos`, `.obsidian`, temp files) and does not
-   * follow symlinks, so a scan never leaves the workspace folder.
+   * Every `.md` file in the vault (or under `folder`), as vault-relative `/` paths,
+   * in a stable order. Skips dot files and folders (`.deskos`, `.obsidian`, temp
+   * files) and does not follow symlinks, so a scan never leaves the workspace folder.
+   * A missing folder, or a path that is a file, yields nothing.
    */
-  async *walk(): AsyncGenerator<string> {
-    yield* walkDir(this.root, "");
+  async *walk(folder?: string): AsyncGenerator<string> {
+    if (folder === undefined) {
+      yield* walkDir(this.root, "");
+      return;
+    }
+    const rel = normalizeFolder(folder);
+    const abs = path.join(this.root, ...rel.split("/"));
+    let real: string;
+    try {
+      if ((await fsp.lstat(abs)).isSymbolicLink()) return;
+      real = await fsp.realpath(abs);
+    } catch (err) {
+      if (errorCode(err) === "ENOENT" || errorCode(err) === "ENOTDIR") return;
+      throw err;
+    }
+    if (!isInside(await fsp.realpath(this.root), real)) return;
+    yield* walkDir(abs, rel);
   }
 
   /**
@@ -217,12 +233,15 @@ export class Vault {
         probe = parent;
       }
     }
-    const rel = path.relative(realRoot, real);
-    if (rel === "" || rel.startsWith("..") || path.isAbsolute(rel)) {
-      throw new VaultPathError(`path leaves the vault: ${notePath}`);
-    }
+    if (!isInside(realRoot, real)) throw new VaultPathError(`path leaves the vault: ${notePath}`);
     return abs;
   }
+}
+
+/** True if `child` is strictly below `root`. Both must be real (resolved) paths. */
+function isInside(root: string, child: string): boolean {
+  const rel = path.relative(root, child);
+  return rel !== "" && !rel.startsWith("..") && !path.isAbsolute(rel);
 }
 
 async function* walkDir(abs: string, rel: string): AsyncGenerator<string> {
@@ -230,8 +249,8 @@ async function* walkDir(abs: string, rel: string): AsyncGenerator<string> {
   try {
     entries = await fsp.readdir(abs, { withFileTypes: true });
   } catch (err) {
-    // A folder deleted mid-scan is not an error.
-    if (errorCode(err) === "ENOENT") return;
+    // A folder deleted mid-scan, or a file where a folder was expected, is not an error.
+    if (errorCode(err) === "ENOENT" || errorCode(err) === "ENOTDIR") return;
     throw err;
   }
   entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));

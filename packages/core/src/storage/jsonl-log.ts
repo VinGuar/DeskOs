@@ -8,6 +8,8 @@ export interface JsonlLogOptions {
   clock?: Clock;
   /** Rotate the active file before an append would push it past this size. */
   maxBytes?: number;
+  /** Also rotate when the UTC day changes, so each segment holds at most one day. */
+  rotateDaily?: boolean;
 }
 
 export interface JsonlReadResult<T> {
@@ -28,8 +30,11 @@ export class JsonlLog<S extends z.ZodType> {
   readonly #schema: S;
   readonly #clock: Clock;
   readonly #maxBytes: number;
+  readonly #rotateDaily: boolean;
   #queue: Promise<unknown> = Promise.resolve();
   #checkedTail = false;
+  /** UTC day (YYYY-MM-DD) of the active file's content, once known. */
+  #activeDay: string | null = null;
 
   constructor(file: string, schema: S, opts: JsonlLogOptions = {}) {
     if (!file.endsWith(".jsonl")) throw new Error(`log file must end in .jsonl: ${file}`);
@@ -37,6 +42,7 @@ export class JsonlLog<S extends z.ZodType> {
     this.#schema = schema;
     this.#clock = opts.clock ?? systemClock;
     this.#maxBytes = opts.maxBytes ?? DEFAULT_MAX_BYTES;
+    this.#rotateDaily = opts.rotateDaily ?? false;
   }
 
   async append(record: z.input<S>): Promise<z.output<S>> {
@@ -86,19 +92,26 @@ export class JsonlLog<S extends z.ZodType> {
 
   async #write(line: string): Promise<void> {
     await fsp.mkdir(path.dirname(this.file), { recursive: true });
-    const size = await fileSize(this.file);
+    const stat = await fileStat(this.file);
+    const size = stat?.size ?? -1;
+    const today = utcDay(this.#clock.now());
     let prefix = "";
     if (!this.#checkedTail) {
       // A crash mid-append can leave a line with no newline. Start fresh so the
       // next record is not glued onto it.
       this.#checkedTail = true;
       if (size > 0 && !(await endsWithNewline(this.file, size))) prefix = "\n";
+      // A file left by an earlier run: its last write tells us which day it holds.
+      if (stat && size > 0) this.#activeDay = utcDay(stat.mtimeMs);
     }
-    if (size > 0 && size + prefix.length + Buffer.byteLength(line) > this.#maxBytes) {
+    const tooBig = size + prefix.length + Buffer.byteLength(line) > this.#maxBytes;
+    const newDay = this.#rotateDaily && this.#activeDay !== null && this.#activeDay !== today;
+    if (size > 0 && (tooBig || newDay)) {
       await this.#rotate();
       prefix = "";
     }
     await fsp.appendFile(this.file, prefix + line, { flush: true });
+    this.#activeDay = today;
   }
 
   async #rotate(): Promise<void> {
@@ -109,7 +122,7 @@ export class JsonlLog<S extends z.ZodType> {
     // Padded counter keeps same-millisecond rotations in order when sorted.
     for (let n = 0; ; n++) {
       const target = path.join(dir, `${stem}.${stamp}-${String(n).padStart(4, "0")}.jsonl`);
-      if ((await fileSize(target)) < 0) {
+      if ((await fileStat(target)) === null) {
         await fsp.rename(this.file, target);
         return;
       }
@@ -117,14 +130,18 @@ export class JsonlLog<S extends z.ZodType> {
   }
 }
 
-/** File size in bytes, or -1 if the file does not exist. */
-async function fileSize(file: string): Promise<number> {
+async function fileStat(file: string): Promise<{ size: number; mtimeMs: number } | null> {
   try {
-    return (await fsp.stat(file)).size;
+    const s = await fsp.stat(file);
+    return { size: s.size, mtimeMs: s.mtimeMs };
   } catch (err) {
-    if (errorCode(err) === "ENOENT") return -1;
+    if (errorCode(err) === "ENOENT") return null;
     throw err;
   }
+}
+
+function utcDay(epochMs: number): string {
+  return new Date(epochMs).toISOString().slice(0, 10);
 }
 
 async function endsWithNewline(file: string, size: number): Promise<boolean> {

@@ -1,5 +1,31 @@
 export { type Clock, systemClock, type TimerHandle } from "./clock.ts";
 export {
+  emptyChanges,
+  INDEX_SNAPSHOT_FILE,
+  type IndexChanges,
+  loadIndex,
+  reconcileIndex,
+  saveIndexSnapshot,
+  snapshotPath,
+  syncNote,
+} from "./search/index-sync.ts";
+export {
+  type FileStamp,
+  INDEX_SNAPSHOT_FORMAT,
+  type IndexedNote,
+  indexedNoteSchema,
+  NoteIndex,
+  type NoteSearchHit,
+  type NoteSearchOptions,
+  noteTitle,
+} from "./search/note-index.ts";
+export {
+  nodeWatch,
+  VaultWatcher,
+  type VaultWatcherOptions,
+  type WatchFn,
+} from "./search/vault-watcher.ts";
+export {
   type AtomicFs,
   type AtomicWriteOptions,
   nodeAtomicFs,

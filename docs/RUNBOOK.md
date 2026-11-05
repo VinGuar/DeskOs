@@ -11,6 +11,12 @@ pnpm install
 ```
 This also sets `core.hooksPath` to `.githooks`, which turns on the pre-commit secret scan.
 
+## Keys and env vars
+- Developer and build-time keys go in `.env` at the repo root: copy `.env.example` to `.env` and fill it in. Every `.env` and `.env.*` file, in any folder, is git-ignored. `scripts/env-files.test.ts` fails if that ever changes or a real env file is committed.
+- New variable: add the name (no value) to `.env.example` with a comment saying what uses it.
+- Load in Node with `process.loadEnvFile()` or `node --env-file-if-exists=.env`. No dotenv dependency.
+- Keys DeskOS stores for a user at runtime (connector tokens) are not env vars. They go in the OS keychain (SPEC 9.6, M1-T06).
+
 ## Daily commands
 - `pnpm check`: everything CI runs, except gitleaks and the audit.
 - `pnpm format`: apply Biome formatting and safe fixes.

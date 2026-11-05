@@ -84,6 +84,23 @@
 - gitleaks `generic-api-key` flagged a fake key in `scripts/scan-secrets.test.ts` (commit 0702298): a single high-entropy fragment next to the word `api`. Fix: build fake keys from short fragments. The historical finding is listed in `.gitleaksignore` by fingerprint. Any new entry there needs a comment saying why.
 - macOS: `os.tmpdir()` is under `/var`, a symlink to `/private/var`, and child processes report the resolved cwd. `makeTempDir` now returns `realpathSync.native(...)`. Tests should compare resolved paths.
 
+## 2026-11-05: Search index is MiniSearch (M1-T01)
+- Context: SPEC 4.2 allows FlexSearch or MiniSearch.
+- Decision: MiniSearch 7. Zero dependencies, first-class TS types, synchronous `toJSON`/`loadJS` for the snapshot, `discard` for cheap removal with auto vacuum. Fields `title` (boost 2) and `body`; prefix search and fuzzy 0.2 on by default; terms are NFKD-folded and lowercased so accents and case do not matter. Bodies are indexed, not stored. Metadata (path, status, id, type, title, entity frontmatter, mtime, size) lives in a map beside it.
+- Snapshot: `.deskos/index.snapshot`, JSON `{ format, notes, search }`, written with `writeFileAtomic`. Any parse or validation failure, or a different `format`, means a full rebuild. Bump `INDEX_SNAPSHOT_FORMAT` whenever search options or the layout change.
+- Cold start: load snapshot, then reconcile: walk the vault, stat each note, re-read only on mtime or size change, drop notes no longer on disk. Stat happens before read so a mid-read edit forces a re-read next time.
+- Duplicate ids (a copied file) are allowed in the index, surfaced by `duplicateIds()`, and `getById` picks the first path in sort order.
+- Alternatives: FlexSearch. Faster at scale, but async multi-file export and weaker types. Revisit only if the 100k p95 budget (SPEC 10.8) fails.
+- Consequences: the default tokenizer splits on spaces and punctuation, so CJK text without spaces indexes as long tokens. Fine for now.
+
+## 2026-11-05: File watcher is node:fs.watch recursive, no chokidar (M1-T01)
+- Decision: `fs.watch(root, { recursive: true })` (native on Windows and macOS, Node's inotify implementation on Linux, Node 22 floor). Events are debounced through `Clock` (100 ms). A changed `.md` path is re-read alone. Any other path (folder renamed or deleted, or unknown) reconciles that subtree. A null file name or a watcher error triggers a full reconcile. Dot paths are ignored, which also ignores our own `.deskos/` writes. A full reconcile every 5 minutes covers dropped events and Unicode normalization differences in macOS event paths.
+- Alternatives: chokidar. Rejected: a dependency for what Node now does natively, and the periodic reconcile already covers the cases chokidar papers over.
+- Consequences: on Windows a folder cannot be renamed while any file inside is open, so a rename racing an index read can fail once with EPERM. Reads are milliseconds long. The integration test retries the rename for this reason.
+
+## 2026-11-05: Env files for developer keys only
+- Decision: developer and build-time keys go in `.env` (git-ignored, every folder). `.env.example` lists names with empty values. `scripts/env-files.test.ts` enforces both. Load with `process.loadEnvFile` or `node --env-file-if-exists`; no dotenv dependency. Keys DeskOS holds for users at runtime go in the OS keychain (SPEC 9.6), never `.env`.
+
 ## Spec deviations
 - 2026-10-07: Node floor 22, not 20 (see above).
 - 2026-10-07: Boundary check stricter than "word-boundary grep" (see above).
@@ -96,6 +113,7 @@
 - `@biomejs/biome` (dev): lint + format in one tool. Alternative: ESLint + Prettier.
 - `@types/node` (dev, pinned ^22): Node API types matching the engine floor.
 - `zod` (testkit, core): SPEC-mandated validation at every boundary. Used in testkit for scenario and fixture schemas, in core for frontmatter and operational records.
+- `minisearch` (core, ^7.2.0): in-memory full-text index with snapshot support. Pure JS, zero dependencies. Alternative: flexsearch (see 2026-11-05 index entry).
 - `yaml` (core, ^2.9.1): frontmatter parse/serialize. Pure JS, zero dependencies, YAML 1.2. Alternatives: js-yaml, gray-matter (see 2026-11-05 vault entry).
 
 ## Verified external facts (what, source, date verified)
