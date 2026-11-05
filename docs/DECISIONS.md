@@ -101,6 +101,14 @@
 ## 2026-11-05: Env files for developer keys only
 - Decision: developer and build-time keys go in `.env` (git-ignored, every folder). `.env.example` lists names with empty values. `scripts/env-files.test.ts` enforces both. Load with `process.loadEnvFile` or `node --env-file-if-exists`; no dotenv dependency. Keys DeskOS holds for users at runtime go in the OS keychain (SPEC 9.6), never `.env`.
 
+## 2026-11-05: Core entities and repositories (M1-T02)
+- Note types (kebab-case, in the vault): `work-item`, `thread`, `artifact`, `person`, `event`, `context-snapshot`. All loose, so packs and users can add fields. Cross-references are entity ids as strings, plus `[[wikilinks]]` in `links`. `artifact.kind` is an open string packs define. Event times keep their offset; `timezone` is an IANA name, `recurrence` an RRULE. The TS type for events is `TimelineEvent` because Node has a global `Event`.
+- `derived` (model, prompt_version, source_ids with at least one id, generated_at) is an optional block in the base note shape, so any note can carry AI output and its provenance.
+- Job is operational (`.deskos/jobs/<id>.json`), with Sandbox as an embedded `{ provider, path, created_at }` record, per SPEC 4.7. States: F1 list plus `interrupted`. No transition rules yet (M2-T03). Operational records share `operationalShape`: id, workspace_id, created_at, updated_at, source.
+- `JobRepository` refuses a record whose `workspace_id` is not its own (isolation), and serializes updates per job id.
+- `NoteRepository` registers its schema on the vault's registry (or refuses a conflicting one), updates the index on every write, and on `get` re-reads from disk; a stale index entry is healed and reported as not found.
+- Default folders for new notes: Work, Threads, Artifacts, People, Events, Context. Users can move notes anywhere.
+
 ## Spec deviations
 - 2026-10-07: Node floor 22, not 20 (see above).
 - 2026-10-07: Boundary check stricter than "word-boundary grep" (see above).

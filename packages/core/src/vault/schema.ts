@@ -8,6 +8,18 @@ export const NOTE_SCHEMA_VERSION = 1;
 export const noteTimestampSchema = z.union([z.iso.datetime({ offset: true }), z.iso.date()]);
 
 /**
+ * Marks AI-produced content and what it was built from, so a citation checker
+ * can trace every claim back to real notes (SPEC 4.6).
+ */
+export const derivedSchema = z.looseObject({
+  model: z.string().min(1),
+  prompt_version: z.string().min(1),
+  source_ids: z.array(z.string().min(1)).min(1),
+  generated_at: noteTimestampSchema,
+});
+export type Derived = z.output<typeof derivedSchema>;
+
+/**
  * Fields every entity note carries. Loose: unknown fields pass through so
  * hand edits survive a read and rewrite.
  */
@@ -22,6 +34,8 @@ export const baseNoteShape = {
   links: z.array(z.string()).optional(),
   /** Ingested third-party content. Always treated as untrusted data. */
   raw: z.boolean().optional(),
+  /** Present when this note's content was produced by a model. */
+  derived: derivedSchema.optional(),
 };
 
 export const baseNoteSchema = z.looseObject(baseNoteShape);
