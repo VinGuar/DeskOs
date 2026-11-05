@@ -27,7 +27,8 @@ const FAKE = {
     "T0000/B0000/abcdefghijklmnopqrstuvwx",
   ),
   "google-api-key": j("AI", "za", "SyA1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q"),
-  "anthropic-api-key": j("sk-", "ant-", "api03-", "Zx9Yw8Vu7Ts6Rq5Po4Nm3Lk2"),
+  // Short pieces: one long random-looking piece trips gitleaks' generic-api-key rule.
+  "anthropic-api-key": j("sk-", "ant-", "api03-", "Zx9Yw8", "Vu7Ts6", "Rq5Po4", "Nm3Lk2"),
   "openai-style-key": j("sk-", "proj-", "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7"),
   "stripe-live-key": j("sk", "_live_", "51HqZxYwVuTsRqPoNmLkJiHg"),
   "private-key-block": j("-----BEGIN ", "RSA ", "PRIVATE KEY-----"),

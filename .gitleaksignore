@@ -1,0 +1,3 @@
+# Known false positives in history. Format: <commit>:<file>:<rule>:<line>
+# Fake key assembled from string fragments in a scanner test (fixed in a later commit).
+070229871315b9185740a235ac52d1e680ae277d:scripts/scan-secrets.test.ts:generic-api-key:30
