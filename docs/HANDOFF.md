@@ -1,16 +1,12 @@
 # Handoff
-Last updated: 2026-11-05, Claude Code session 2, after: macOS watcher fix pushed for M1-T02.
+Last updated: 2026-11-05, Claude Code session 2, after: M1-T02 green in CI and marked done.
 
 Short "resume here" file. Rewrite it after every finished step (code pushed, CI result in, task flipped, blocker hit), not just at session end. Keep it under about 100 lines: history goes in PROGRESS.md, rationale in DECISIONS.md.
 
 ## Resume here
-- Active task: M1-T02 core entity schemas and repositories. Code complete (commit `0439cc5`).
-- CI run 42086864296 on `0439cc5`: all green except macOS, where the real-fs watcher test timed out (FSEvents not live yet). Fixed with `rescanOnStart` plus a liveness probe in the test, pushed in the commit after `0439cc5`.
-- Waiting on: CI for that fix commit. Find it with `actions/runs?head_sha=<HEAD sha>`.
-- Next step:
-  1. Check that run. All five jobs green: flip M1-T02 to `[x]` in `docs/TASKS.md` with the run id, update this file and PROGRESS.md, commit, push.
-  2. A job failed: get annotations (see "Watching CI" below), fix, push, watch again.
-  3. Then start M1-T03 event bus and persistent, restart-safe job scheduler (SPEC 7, M1). Uses `Clock` for time and `JsonStore` for persistence.
+- Done so far: M0, M1-T01, M1-T02 (last green CI: run 42087947882 on `d6f9e34`).
+- Active task: M1-T03 event bus and persistent, restart-safe job scheduler. Not started.
+- Next step: design in `packages/core/src/events/` (bus) and `packages/core/src/scheduler/`. Time via `Clock`, persistence via `JsonStore` under `.deskos/`. Restart-safe means: scheduled work survives a daemon restart, and work that was running when the process died is detected on start, not lost or run twice silently. Log the design in DECISIONS.md before coding.
 - Uncommitted work: none.
 
 ## Where things are (packages/core/src)
