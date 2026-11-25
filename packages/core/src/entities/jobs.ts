@@ -3,6 +3,7 @@ import path from "node:path";
 import { z } from "zod";
 import { type Clock, systemClock } from "../clock.ts";
 import { JsonStore } from "../storage/json-store.ts";
+import { KeyedLock } from "../util/keyed-lock.ts";
 
 /** Fields every operational record carries (SPEC 4.7). */
 export const operationalShape = {
@@ -83,7 +84,7 @@ export class JobRepository {
   readonly #store: JsonStore<typeof jobSchema>;
   readonly #clock: Clock;
   readonly #newId: () => string;
-  readonly #locks = new Map<string, Promise<unknown>>();
+  readonly #lock = new KeyedLock();
 
   constructor(opts: {
     internalDir: string;
@@ -152,13 +153,6 @@ export class JobRepository {
   }
 
   #serialized<T>(id: string, fn: () => Promise<T>): Promise<T> {
-    const prev = this.#locks.get(id) ?? Promise.resolve();
-    const run = prev.then(fn);
-    const tail = run.catch(() => {});
-    this.#locks.set(id, tail);
-    void tail.then(() => {
-      if (this.#locks.get(id) === tail) this.#locks.delete(id);
-    });
-    return run;
+    return this.#lock.run(id, fn);
   }
 }

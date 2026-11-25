@@ -39,6 +39,45 @@ export {
   workItemSchema,
 } from "./entities/notes.ts";
 export {
+  type BusEvent,
+  type BusHandler,
+  defineTopic,
+  EventBus,
+  type EventBusOptions,
+  type SubscribeOptions,
+  type Subscription,
+  type Topic,
+  WorkspaceBus,
+} from "./events/bus.ts";
+export {
+  lastRunSchema,
+  MAX_TIMER_MS,
+  runFailedTopic,
+  runInterruptedTopic,
+  runMarkerSchema,
+  runSkippedTopic,
+  runStartedTopic,
+  runSucceededTopic,
+  type ScheduledTask,
+  Scheduler,
+  type SchedulerOptions,
+  scheduledTaskSchema,
+  TASK_STATES,
+  type TaskHandler,
+  type TaskRunContext,
+  type TaskState,
+  taskInvalidTopic,
+  type UpsertTaskInput,
+} from "./scheduler/scheduler.ts";
+export {
+  firstRunAt,
+  isValidTimeZone,
+  nextRunAfter,
+  type Trigger,
+  type TriggerInput,
+  triggerSchema,
+} from "./scheduler/triggers.ts";
+export {
   emptyChanges,
   INDEX_SNAPSHOT_FILE,
   type IndexChanges,
@@ -72,6 +111,7 @@ export {
 } from "./storage/atomic.ts";
 export { CorruptRecordError, JsonStore } from "./storage/json-store.ts";
 export { JsonlLog, type JsonlLogOptions, type JsonlReadResult } from "./storage/jsonl-log.ts";
+export { KeyedLock } from "./util/keyed-lock.ts";
 export {
   FrontmatterError,
   type ParsedNote,
