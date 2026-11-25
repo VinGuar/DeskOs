@@ -16,7 +16,7 @@ Exit: CI green on 3 OSes. A fresh AI session can resume using only the repo docs
 ## M1: Core engine and generalization foundations
 - [x] M1-T01 (CI run 42084790274) Vault engine: frontmatter schemas per entity type (zod), atomic file read/write, file watcher, in-memory index builder plus snapshot persistence, rebuild-from-scratch tests, operational JSON/JSONL storage with atomic writes.
 - [x] M1-T02 (CI run 42087947882) Core entity schemas (zod) and repositories for all entities in 3.2.
-- [~] local M1-T03 Event bus and job scheduler (persistent, restart-safe).
+- [x] M1-T03 (CI run 45526634180) Event bus and job scheduler (persistent, restart-safe).
 - [ ] M1-T04 ApprovalGate, PendingAction, Approval, and append-only audit log.
 - [ ] M1-T05 Pack host: load, enable/disable per workspace, register features/panels/jobs/providers; unload cleanly.
 - [ ] M1-T06 Connector interface, fake connector, secrets store on OS keychain (with test double).

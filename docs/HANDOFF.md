@@ -1,13 +1,12 @@
 # Handoff
-Last updated: 2026-11-24, Claude Code session 3, after: M1-T03 code complete, green locally, pushed for CI.
+Last updated: 2026-11-24, Claude Code session 3, after: M1-T03 green in CI and marked done.
 
 Short "resume here" file. Rewrite it after every finished step (code pushed, CI result in, task flipped, blocker hit), not just at session end. Keep it under about 100 lines: history goes in PROGRESS.md, rationale in DECISIONS.md.
 
 ## Resume here
-- Done so far: M0, M1-T01, M1-T02 (last green CI: run 42087947882 on `d6f9e34`).
-- Active task: M1-T03 event bus and persistent, restart-safe scheduler. Code complete, `pnpm check` and audit green on Windows (358 tests). Pushed; waiting on CI.
-- Next step: check the CI run for the latest commit on main. Green on ubuntu, macOS, Windows, gitleaks, audit: flip M1-T03 to `[x]` with the run id in TASKS.md, PROGRESS.md, and here. Red: read annotations, fix, push once.
-- After that: M1-T04 ApprovalGate, PendingAction, Approval, audit log on `JsonlLog` with `rotateDaily: true`.
+- Done so far: M0, M1-T01, M1-T02, M1-T03 (last green CI: run 45526634180 on `6057997`).
+- Active task: M1-T04 ApprovalGate, PendingAction, Approval, append-only audit log. Not started.
+- Next step: read SPEC sections on approvals and audit, log the design in DECISIONS.md before coding. Audit log on `JsonlLog` with `rotateDaily: true`. Act operations must go through ApprovalGate (CLAUDE.md rule 4). Consider publishing approval events on the `EventBus` and reusing `KeyedLock` for record updates.
 - Uncommitted work: none.
 
 ## Where things are (packages/core/src)
